@@ -1,0 +1,5 @@
+<library path="lorawan_bridge">
+  <class name="LoRaWANBridge" type="wisevision::LoraWanBridge" base_class_type="wisevision::Bridge">
+    <description></description>
+  </class>
+</library>

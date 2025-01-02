@@ -1,0 +1,9 @@
+repositories:
+  chirpstack-docker:
+    type: git
+    url: https://github.com/chirpstack/chirpstack-docker.git
+    version: 533035808e73afdd416c5062d18050ba33931531
+  sx1302_hal:
+    type: git
+    url: https://github.com/Lora-net/sx1302_hal.git
+    version: V2.1.0
