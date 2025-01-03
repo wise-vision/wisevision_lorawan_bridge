@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CHIRPSTACK_VERSION="4.8.1"
+CHIRPSTACK_VERSION="4.10.2"
 
 if [ -e proto ]; then
     exit 0

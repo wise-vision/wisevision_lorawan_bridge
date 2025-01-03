@@ -115,9 +115,13 @@ namespace wisevision {
         continue;
       }
       if (!m_only_standard_parser) {
+        RCLCPP_DEBUG(this->get_logger(),
+                     "Attemping to load custom parser (%s) for device EUI \"%s\"",
+                     dev_profile.c_str(),
+                     dev_eui.c_str());
         if (!dev->loadCustomParser(dev_profile)) {
           RCLCPP_WARN(this->get_logger(),
-                      "Cannot load custom parser (%s) for device EUI \"%s\"",
+                      "Cannot load custom parser (%s) for device EUI \"%s\". Using only standard parser.",
                       dev_profile.c_str(),
                       dev_eui.c_str());
         }
@@ -201,7 +205,7 @@ namespace wisevision {
     if (!this->get_parameter<std::string>("application_id", m_application_id)) {
       throw std::runtime_error("Set \"application_id\" node parameter.");
     }
-    RCLCPP_DEBUG(this->get_logger(), "Application ID: %s", m_application_id.c_str());
+    RCLCPP_INFO(this->get_logger(), "Application ID: %s", m_application_id.c_str());
 
     // MQTT broker parameters
     // Host
@@ -209,36 +213,36 @@ namespace wisevision {
     parameter_descriptor.read_only = true;
     parameter_descriptor.type = rclcpp::ParameterType::PARAMETER_STRING;
     const auto mqtt_broker_host =
-        this->declare_parameter<std::string>("broker.host", "localhost", parameter_descriptor);
+        this->declare_parameter<std::string>("mqtt_broker.host", "localhost", parameter_descriptor);
     // Port
     parameter_descriptor = rcl_interfaces::msg::ParameterDescriptor {};
     parameter_descriptor.read_only = true;
     parameter_descriptor.type = rclcpp::ParameterType::PARAMETER_INTEGER;
-    const auto mqtt_broker_port = this->declare_parameter<int>("broker.port", 1883, parameter_descriptor);
+    const auto mqtt_broker_port = this->declare_parameter<int>("mqtt_broker.port", 1883, parameter_descriptor);
     m_mqtt_broker_parameters = ClientConfiguration {};
     m_mqtt_broker_parameters.host = mqtt_broker_host;
     m_mqtt_broker_parameters.port = static_cast<size_t>(mqtt_broker_port);
-    RCLCPP_DEBUG(this->get_logger(),
-                 "MQTT broker parameters: (%s, %ld)",
-                 m_mqtt_broker_parameters.host.c_str(),
-                 m_mqtt_broker_parameters.port);
+    RCLCPP_INFO(this->get_logger(),
+                "MQTT broker parameters: (%s, %ld)",
+                m_mqtt_broker_parameters.host.c_str(),
+                m_mqtt_broker_parameters.port);
 
     // Use only standard parser
     parameter_descriptor = rcl_interfaces::msg::ParameterDescriptor {};
     parameter_descriptor.read_only = true;
     parameter_descriptor.type = rclcpp::ParameterType::PARAMETER_BOOL;
-    this->declare_parameter<bool>("use_only_standard", true, parameter_descriptor);
-    this->get_parameter<bool>("use_only_standard", m_only_standard_parser);
+    m_only_standard_parser = this->declare_parameter<bool>("use_only_standard", true, parameter_descriptor);
+    // this->get_parameter<bool>("use_only_standard", m_only_standard_parser);
     if (m_only_standard_parser) {
-      RCLCPP_DEBUG(this->get_logger(), "Only standard parsers will be used.");
+      RCLCPP_INFO(this->get_logger(), "Only standard parsers will be used.");
     } else {
-      RCLCPP_DEBUG(this->get_logger(), "Standard and custom parsers will be used.");
+      RCLCPP_INFO(this->get_logger(), "Standard and custom parsers will be used.");
     }
 
     // API token
-    const auto token = std::getenv("API_TOKEN");
+    const auto token = std::getenv("CHIRPSTACK_API_TOKEN");
     if (token == nullptr) {
-      throw std::runtime_error("Provide API token as \"API_TOKEN\" environment variable.");
+      throw std::runtime_error("Provide API token as \"CHIRPSTACK_API_TOKEN\" environment variable.");
     }
     m_api_token = token;
 
@@ -256,10 +260,10 @@ namespace wisevision {
     m_api_parameters = ClientConfiguration {};
     m_api_parameters.host = api_host;
     m_api_parameters.port = static_cast<size_t>(api_port);
-    RCLCPP_DEBUG(this->get_logger(),
-                 "Chirpstack API parameters: (%s, %ld)",
-                 m_api_parameters.host.c_str(),
-                 m_api_parameters.port);
+    RCLCPP_INFO(this->get_logger(),
+                "Chirpstack API parameters: (%s, %ld)",
+                m_api_parameters.host.c_str(),
+                m_api_parameters.port);
   }
 
   EventType eventTypeFromString(const std::string& event_type) {
@@ -286,6 +290,3 @@ namespace wisevision {
 
 #include <rclcpp_components/register_node_macro.hpp>
 RCLCPP_COMPONENTS_REGISTER_NODE(wisevision::LoraWanBridge)
-
-// #include <pluginlib/class_list_macros.hpp>
-// PLUGINLIB_EXPORT_CLASS(wisevision::LoraWanBridge, wisevision::Bridge)

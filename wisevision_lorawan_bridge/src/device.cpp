@@ -10,7 +10,7 @@ namespace wisevision {
   }
 
   bool Device::loadStandardParser() {
-    m_standard_parser = plugin_loader::loadPlugin<wisevision::Parser>("standard_parser", "wisevision::Parser", "standard_parser");
+    m_standard_parser = plugin_loader::loadPlugin<wisevision::Parser>("wisevision_parser", "standard_parser");
     if (m_standard_parser == nullptr) {
       return false;
     }
@@ -27,7 +27,7 @@ namespace wisevision {
   }
 
   bool Device::loadCustomParser(const std::string& parser_name) {
-    m_custom_parser = plugin_loader::loadPlugin<wisevision::Parser>(parser_name, "wisevision::Parser", parser_name);
+    m_custom_parser = plugin_loader::loadPlugin<wisevision::Parser>("wisevision_parser", parser_name);
     if (m_custom_parser == nullptr) {
       return false;
     }
