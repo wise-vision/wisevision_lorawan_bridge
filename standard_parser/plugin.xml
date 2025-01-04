@@ -1,5 +1,0 @@
-<library path="standard_parser">
-  <class name="standard_parser" type="wisevision::StandardParser" base_class_type="wisevision::Parser">
-    <description></description>
-  </class>
-</library>
