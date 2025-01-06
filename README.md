@@ -53,7 +53,7 @@ cmake -DBUILD_SHARED_LIBS=ON \
     -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=OFF \
     -DgRPC_BUILD_GRPC_RUBY_PLUGIN=OFF \
     ../..
-make -j 4 # if ones machine is stronger, consider increasing number of jobs or skip it altogether to run without constraints
+make -j 4 # if your machine is stronger, consider increasing number of jobs or skip it altogether to run without constraints
 make install
 popd
 ```
@@ -79,6 +79,11 @@ There is prepared Docker based configuration in `chirpstack_docker` directory.
 https://www.chirpstack.io/docs/getting-started/docker.html
 
 ## packer_forwarder
+
+> [!NOTE]
+> All configuration files are used in EUR868 zone. If you are running LoRaWAN devices in different
+zone, please take that into account by changing configuration file.
+
 1. Build binaries.
 ```bash
 cd sx1302_hal
@@ -91,8 +96,8 @@ and replace gateway ID value.
 "gateway_ID": "REPLACE_THIS_VALUE",
 ```
 
-# Build bridge
-2. Navigate to ROS 2 workspace and build.
+# Build the bridge
+Navigate to ROS 2 workspace and build.
 ```bash
 colcon build --packages-up-to wisevision_lorawan_bridge
 ```
@@ -104,8 +109,8 @@ cd src/wisevision_lorawan_bridge/sx1302_hal/packet_forwarder
 sudo ./lora_pkt_fwd -c global_conf.json.sx1250.EU868.USB
 ```
 > [!NOTE]
-> If there are problems starting *packet_forwarder*, check device. In configuration file it is set
-to */dev/ttyACM0*.
+> If there are problems starting *packet_forwarder*, check the device. In configuration file it is set
+to `/dev/ttyACM0`.
 
 ## Start *Chirpstack* stack.
 ```bash
@@ -127,7 +132,7 @@ cd chirpstack_docker
 
 3. Login to the panel. On the first start username is *admin* and password is *admin*.
 > [!NOTE]
-> It is recommended to change password.
+> It is recommended to change the password.
 
 4. On the left side, navigate to *Gateways* under *Tenant* and add new gateway. One can add multiple of those.
 
@@ -135,17 +140,17 @@ cd chirpstack_docker
 
 Fill the name field and gateway ID.
 
-5. Navigate to *Applications* and create one. Save application ID for later use.
+5. Navigate to *Applications* and create one. Save `application ID` for later use.
 6. Add device for the application that was just created. For that, *Device EUI* and *Device profile* is needed.
 If there is no profile available for the device, one has to configure it manually.
 7. If added device supports OTAA (Over-The-Air-Activation), navigate to *OTAA keys* tab for selected device
 and fill *Application key* provided to device.
 8. Repeat step 6-7 for all devices that one wants to see in the system.
 
-Last step in Chirpstack UI is to obtain **CHIRPSTACK_API_KEY** needed to connect bridge to Chirpstack via MQTT.
+Last step in Chirpstack UI is to obtain `CHIRPSTACK_API_KEY` needed to connect bridge to Chirpstack via MQTT.
 1. Navigate to *API Keys* under current *Tenant*.
 2. Add new key and give it a name.
-3. Copy the value which is presented in the window and store it in **CHIRPSTACK_API_KEY** environment variable.
+3. Copy the value which is presented in the window and store it in `CHIRPSTACK_API_KEY` environment variable.
 
 ## Start LoRaWAN bridge
 
@@ -159,13 +164,14 @@ source install/local_setup.bash
 
 2. Start bridge as standalone node.
 ```bash
-export CHIRPSTACK_API_KEY=<paste API key>
+export CHIRPSTACK_API_KEY=<API key>
 ros2 run wisevision_lorawan_bridge lorawan_bridge --ros-args --param application_id:=<APPLICATION_ID> --param use_only_standard:=false
 ```
 
 3. Start bridge in components container.
 - start component container
 ```bash 
+export CHIRPSTACK_API_KEY=<API key>
 ros2 run rclcpp_components component_container
 ```
 - load bridge component
@@ -173,9 +179,9 @@ ros2 run rclcpp_components component_container
 ros2 component load /ComponentManager wisevision_lorawan_bridge wisevision::LoraWanBridge --parameter application_id:=<APPLICATION_ID> --parameter use_only_standard:=false
 ```
 
-## LoRaWAN bridge node parameters
+# LoRaWAN bridge node ROS 2 parameters
 - application_id (string),
-- use_only_standard (bool),
+- use_only_standard (boolean),
 - api.host (string),
 - api.port (integer),
 - mqtt_broker.host (string),
