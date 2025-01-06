@@ -2,3 +2,5 @@
 .vscode/settings.json
 *.proto
 **/wisevision_msgs/
+.cache/
+sx1302_hal/
