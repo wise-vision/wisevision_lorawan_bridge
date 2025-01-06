@@ -3,5 +3,4 @@
 *.proto
 **/wisevision_msgs/
 .cache/
-chirpstack-docker/
 sx1302_hal/
