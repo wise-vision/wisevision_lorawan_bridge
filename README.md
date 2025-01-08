@@ -7,7 +7,7 @@ pip install pre-commit
 pre-commit install
 ```
 
-## Install Paho MQTT Cpp library from source
+## Install Paho MQTT Cpp library
 ```bash
 sudo apt install libpaho-mqtt-dev libpaho-mqttpp-dev
 ```
