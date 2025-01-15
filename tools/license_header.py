@@ -13,7 +13,7 @@ import sys
 import argparse
 
 EXACT_LICENSE_TEXT = """/*
- * Copyright (C) 2025  wisevision
+ * Copyright (C) 2025 wisevision
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,14 +21,13 @@ EXACT_LICENSE_TEXT = """/*
  */
 """
 
-EXACT_LICENSE_TEXT_PY = """# 
-#  Copyright (C) 2025  wisevision
-# 
+EXACT_LICENSE_TEXT_PY = """#
+#  Copyright (C) 2025 wisevision
+#
 #  This Source Code Form is subject to the terms of the Mozilla Public
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
-#
-"""
+#"""
 
 # Some simple detection: we check if the file contains a key line from the header
 HEADER_KEY_LINE = "This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0."
