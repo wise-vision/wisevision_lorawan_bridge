@@ -1,10 +1,18 @@
+/*
+ * Copyright (C) 2025 wisevision
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #pragma once
 
 #include <functional>
-#include <wisevision_parser/parser.hpp>
 #include <rclcpp/generic_publisher.hpp>
 #include <rclcpp/generic_subscription.hpp>
 #include <rclcpp/node.hpp>
+#include <wisevision_parser/parser.hpp>
 
 namespace wisevision {
   using MqttPublishFunction = std::function<void(const std::string&, const std::vector<uint8_t>&)>;

@@ -1,3 +1,11 @@
+/*
+ * Copyright (C) 2025 wisevision
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ */
+
 #pragma once
 
 #include <mqtt/async_client.h>
@@ -32,7 +40,7 @@ namespace wisevision {
 
   class LoraWanBridge : public rclcpp::Node, public virtual mqtt::callback {
   public:
-    explicit LoraWanBridge(const rclcpp::NodeOptions &options);
+    explicit LoraWanBridge(const rclcpp::NodeOptions& options);
     virtual ~LoraWanBridge();
 
   private:
