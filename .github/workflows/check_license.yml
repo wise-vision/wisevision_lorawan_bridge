@@ -1,0 +1,17 @@
+name: Check MPL License Lines
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'stabilization/*'
+      - dev
+
+jobs:
+  check-license-lines:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check MPL License Lines
+      uses: kt3k/license_checker@v1.0.6
