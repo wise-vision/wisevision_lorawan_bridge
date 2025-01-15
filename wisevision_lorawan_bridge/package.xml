@@ -12,6 +12,7 @@
   <depend>chirpstack_api</depend>
   <depend>wisevision_plugin_loader</depend>
   <depend>wisevision_parser</depend>
+  <depend>standard_parser</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
