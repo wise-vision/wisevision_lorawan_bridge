@@ -30,11 +30,11 @@ jobs:
       run: |
           apt-get update 
           sudo rosdep fix-permissions
-          rosdep update --include-eol-distros --rosdistro=humble
+          rosdep update --include-eol-distros --rosdistro humble
 
     - name: Build
       run: |
-        export GRPC_INSTALL_DIR=$HOME/grpc_install_dir
+        export GRPC_INSTALL_DIR=/root/grpc_install_dir
         export PATH=$GRPC_INSTALL_DIR/bin:$PATH
         export LD_LIBRARY_PATH=$GRPC_INSTALL_DIR/lib:$LD_LIBRARY_PATH
         . /opt/ros/humble/setup.sh
