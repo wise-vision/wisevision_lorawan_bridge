@@ -1,0 +1,15 @@
+version: "3.8"
+services:
+  wisevision_lorawan_bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    entrypoint: /bin/bash -c
+    command: >
+      "source /opt/ros/humble/setup.bash &&
+      source /root/wisevision_lorawan_bridge_ws/install/setup.bash &&
+      ros2 run wisevision_lorawan_bridge lorawan_bridge --ros-args --param application_id:=$APPLICATION_ID" --param use_only_standard:=false"
+    tty: true
+    network_mode: host

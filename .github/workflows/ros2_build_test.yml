@@ -1,0 +1,48 @@
+name: Build and run ROS2 tests
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - main
+      - 'stabilization/**'
+  schedule:
+    - cron: '0 22 * * *'
+
+jobs:
+  build:
+    runs-on: self-hosted
+
+    continue-on-error: true
+
+
+    container:
+      image: wisevision/ros_with_wisevision_msgs_wisevision_core_and_grpc:humble
+
+    steps:
+
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        path: wisevision_lorawan_bridge_ws/src/wisevision_lorawan_bridge
+        
+    - name: Install dependencies
+      run: |
+          apt-get update 
+          apt-get install -y wget build-essential gcc make cmake libssl-dev autoconf libtool pkg-config 
+          apt-get install -y libpaho-mqtt-dev  libpaho-mqttpp-dev 
+          apt-get install -y libboost-all-dev 
+          sudo rosdep fix-permissions
+          rosdep update --include-eol-distros --rosdistro=humble
+          cd $GITHUB_WORKSPACE/wisevision_lorawan_bridge_ws
+          rosdep install --from-paths src --ignore-src -r -y --rosdistro humble
+
+    - name: Build
+      run: |
+        export GRPC_INSTALL_DIR=$HOME/grpc_install_dir
+        export PATH=$GRPC_INSTALL_DIR/bin:$PATH
+        export LD_LIBRARY_PATH=$GRPC_INSTALL_DIR/lib:$LD_LIBRARY_PATH
+        . /opt/ros/humble/setup.sh
+        . /root/wisevision_ws/install/setup.sh
+        cd wisevision_lorawan_bridge_ws
+        colcon build 
