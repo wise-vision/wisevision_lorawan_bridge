@@ -10,6 +10,6 @@ services:
     command: >
       "source /opt/ros/humble/setup.bash &&
       source /root/wisevision_lorawan_bridge_ws/install/setup.bash &&
-      ros2 run wisevision_lorawan_bridge lorawan_bridge --ros-args --param application_id:=$APPLICATION_ID" --param use_only_standard:=false"
+      ros2 run wisevision_lorawan_bridge lorawan_bridge --ros-args --param application_id:=$APPLICATION_ID" --param use_only_standard:=false
     tty: true
     network_mode: host
