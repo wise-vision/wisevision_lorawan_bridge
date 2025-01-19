@@ -13,7 +13,17 @@ jobs:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
-    - name: REUSE Compliance Check
-      uses: fsfe/reuse-action@v4
-    # - name: LICENSE Existence Checker
-    #   uses: Gary-H9/license-existence-checker@v1.0.0
+    - name: LICENSE Existence Checker
+      uses: Gary-H9/license-existence-checker@v1.1.4
+    - name: Setup Deno
+      uses: denoland/setup-deno@v1
+      with:
+        deno-version: v1.x
+    - name: Run license checker
+      run: deno run --allow-read jsr:@kt3k/license-checker@3.3.1/main
+    # - name: REUSE Compliance Check
+    #   uses: fsfe/reuse-action@v4
+    # - name: Check License Header
+    #   uses: korandoru/hawkeye@v5.8.1
+    # - name: Check License Header
+    #   uses: apache/skywalking-eyes/header@v0.6.0
