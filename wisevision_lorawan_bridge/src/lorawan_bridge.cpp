@@ -248,9 +248,9 @@ namespace wisevision {
     }
 
     // API token
-    const auto token = std::getenv("CHIRPSTACK_API_TOKEN");
+    const auto token = std::getenv("CHIRPSTACK_API_KEY");
     if (token == nullptr) {
-      throw std::runtime_error("Provide API token as \"CHIRPSTACK_API_TOKEN\" environment variable.");
+      throw std::runtime_error("Provide API key as \"CHIRPSTACK_API_KEY\" environment variable.");
     }
     m_api_token = token;
 
