@@ -18,7 +18,6 @@ jobs:
 
     container:
       image: wisevision/ros_with_wisevision_msgs_wisevision_core_and_grpc:humble
-      options: --user 1000:1000
 
     steps:
 
@@ -41,4 +40,9 @@ jobs:
         . /opt/ros/humble/setup.sh
         . /root/wisevision_ws/install/setup.sh
         cd wisevision_lorawan_bridge_ws
-        colcon build 
+        colcon build
+
+    - name: Clean up workspace
+      if: always()
+      run: |
+        sudo rm -rf wisevision_lorawan_bridge_ws 
