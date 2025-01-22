@@ -2,11 +2,10 @@ name: Check MPL License
 
 on:
   pull_request:
-  push:
     branches:
-      - main
-      - 'stabilization/*'
       - dev
+      - main
+      - 'stabilization/**'
 
 jobs:
   check-license:
