@@ -150,7 +150,7 @@ and fill *Application key* provided to device.
 Last step in Chirpstack UI is to obtain `CHIRPSTACK_API_KEY` needed to connect bridge to Chirpstack via MQTT.
 1. Navigate to *API Keys* under current *Tenant*.
 2. Add new key and give it a name.
-3. Copy the value which is presented in the window and store it in `CHIRPSTACK_API_KEY` environment variable.
+3. Copy the value which is presented in the window and store it in `CHIRPSTACK_API_TOKEN` environment variable.
 
 ## Start LoRaWAN bridge
 
@@ -164,19 +164,30 @@ source install/local_setup.bash
 
 2. Start bridge as standalone node.
 ```bash
-export CHIRPSTACK_API_KEY=<API key>
+export CHIRPSTACK_API_TOKEN=<API key>
 ros2 run wisevision_lorawan_bridge lorawan_bridge --ros-args --param application_id:=<APPLICATION_ID> --param use_only_standard:=false
 ```
 
 3. Start bridge in components container.
 - start component container
 ```bash 
-export CHIRPSTACK_API_KEY=<API key>
+export CHIRPSTACK_API_TOKEN=<API key>
 ros2 run rclcpp_components component_container
 ```
 - load bridge component
 ```bash
 ros2 component load /ComponentManager wisevision_lorawan_bridge wisevision::LoraWanBridge --parameter application_id:=<APPLICATION_ID> --parameter use_only_standard:=false
+```
+
+## Start LoRaWAN bridge in Docker conatiner
+
+1. Create `.env` file from `.env_example` and rewrite  `CHIRPSTACK_API_TOKEN` and `APPLICATION_ID` with personal keys ([How to get keys?](#setup-chirpstack)).
+``` bash
+cp .env_example .env
+```
+2. Run docker-compose
+```bash
+docker-compose up
 ```
 
 # LoRaWAN bridge node ROS 2 parameters

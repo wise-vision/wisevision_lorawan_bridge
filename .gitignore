@@ -4,3 +4,4 @@
 **/wisevision_msgs/
 .cache/
 sx1302_hal/
+.env
