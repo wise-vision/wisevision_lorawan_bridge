@@ -1,17 +1,22 @@
-name: Check MPL License Lines
+name: Check MPL License
 
 on:
   pull_request:
-  push:
     branches:
-      - main
-      - 'stabilization/*'
       - dev
+      - main
+      - 'stabilization/**'
 
 jobs:
-  check-license-lines:
+  check-license:
     runs-on: self-hosted
     steps:
     - uses: actions/checkout@v4
-    - name: Check MPL License Lines
-      uses: kt3k/license_checker@v1.0.6
+    - name: LICENSE Existence Checker
+      uses: Gary-H9/license-existence-checker@v1.1.4
+    - name: Setup Deno
+      uses: denoland/setup-deno@v1
+      with:
+        deno-version: v1.x
+    - name: Run license checker
+      run: deno run --allow-read jsr:@kt3k/license-checker@3.3.1/main
