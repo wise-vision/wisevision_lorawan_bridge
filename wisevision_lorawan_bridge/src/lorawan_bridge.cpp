@@ -31,7 +31,7 @@ namespace wisevision {
 
     m_one_off_initialization_timer_callback_group =
         this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-    m_one_off_initalization_timer = this->create_wall_timer(std::chrono::nanoseconds(1),
+    m_one_off_initialization_timer = this->create_wall_timer(std::chrono::nanoseconds(1),
                                                             std::bind(&LoraWanBridge::initializationCallback, this),
                                                             m_one_off_initialization_timer_callback_group);
   }
@@ -41,8 +41,8 @@ namespace wisevision {
   }
 
   void LoraWanBridge::initializationCallback() {
-    if (m_one_off_initalization_timer != nullptr) {
-      m_one_off_initalization_timer->cancel();
+    if (m_one_off_initialization_timer != nullptr) {
+      m_one_off_initialization_timer->cancel();
       m_one_off_initialization_timer_callback_group.reset();
     }
     auto devices_opt = initializeDevices();

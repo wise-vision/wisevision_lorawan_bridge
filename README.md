@@ -53,7 +53,7 @@ cmake -DBUILD_SHARED_LIBS=ON \
     -DgRPC_BUILD_GRPC_PYTHON_PLUGIN=OFF \
     -DgRPC_BUILD_GRPC_RUBY_PLUGIN=OFF \
     ../..
-make -j 4 # if your machine is stronger, consider increasing number of jobs or skip it altogether to run without constraints
+make -j$(nproc --ignore=2) # if your machine is stronger, consider increasing number of jobs or skip it altogether to run without constraints
 make install
 popd
 ```
@@ -81,8 +81,7 @@ https://www.chirpstack.io/docs/getting-started/docker.html
 ## packer_forwarder
 
 > [!NOTE]
-> All configuration files are used in EUR868 zone. If you are running LoRaWAN devices in different
-zone, please take that into account by changing configuration file.
+> All configuration files are used in EUR868 zone. If you are running LoRaWAN devices in different zone, please take that into account by changing configuration file.
 
 1. Build binaries.
 ```bash
