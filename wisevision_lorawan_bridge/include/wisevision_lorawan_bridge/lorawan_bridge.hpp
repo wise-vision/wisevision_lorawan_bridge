@@ -12,10 +12,9 @@
 
 #include <mqtt/async_client.h>
 #include <mqtt/delivery_token.h>
-#include <wisevision_parser/parser.hpp>
-// #include <parser/parser_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <unordered_map>
+#include <wisevision_parser/parser.hpp>
 
 #include "chirpstack_api/api/device.grpc.pb.h"
 #include "wisevision_lorawan_bridge/device.hpp"
@@ -54,16 +53,17 @@ namespace wisevision {
     ClientConfiguration m_api_parameters;
     std::unique_ptr<api::DeviceService::Stub> m_device_client;
     bool m_only_standard_parser;
-    rclcpp::TimerBase::SharedPtr m_one_off_initalization_timer;
+    rclcpp::TimerBase::SharedPtr m_one_off_initialization_timer;
     rclcpp::CallbackGroup::SharedPtr m_one_off_initialization_timer_callback_group;
+    size_t m_devices_list_pagination;
 
-    void setupParameters();
+    bool setupParameters();
     std::string getDeviceEuiFromTopic(const std::string& topic);
     EventType getEventTypeFromTopic(const std::string& topic);
     void publishToMqtt(const std::string& device_eui, const std::vector<uint8_t>& payload);
     bool connectToApi(const ClientConfiguration& configuration);
     std::optional<std::unordered_map<std::string, Device::UniquePtr>> initializeDevices();
-    std::optional<std::vector<api::DeviceListItem>> getRegisteredDevicesItemsFromApi();
+    std::optional<std::vector<api::DeviceListItem>> getRegisteredDevicesItemsFromApi(const size_t devices_pagination);
     void initializationCallback();
 
     // mqtt::callback overrides

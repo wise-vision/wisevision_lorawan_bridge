@@ -195,5 +195,5 @@ docker-compose up
 - api.host (string),
 - api.port (integer),
 - mqtt_broker.host (string),
-- mqtt_broker.port (integer).
-
+- mqtt_broker.port (integer),
+- devices_pagination (integer).

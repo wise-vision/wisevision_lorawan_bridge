@@ -19,35 +19,49 @@ namespace wisevision {
   LoraWanBridge::LoraWanBridge(const rclcpp::NodeOptions& options)
     : Node("lorawan_bridge",
            rclcpp::NodeOptions(options).start_parameter_services(false).start_parameter_event_publisher(false)) {
-    setupParameters();
+    if (!setupParameters()) {
+      RCLCPP_FATAL(this->get_logger(), "Cannot setup ROS 2 node parameters. Exiting...");
+      rclcpp::shutdown();
+      return;
+    }
     m_mqtt_client = std::make_shared<mqtt::async_client>(m_mqtt_broker_parameters.host + ":" +
                                                              std::to_string(m_mqtt_broker_parameters.port),
                                                          "lorawan_bridge");
     m_mqtt_client->set_callback(*this);
     m_mqtt_client->connect();
+
     if (!connectToApi(m_api_parameters)) {
-      throw std::runtime_error("Cannot connect to API. Exiting...");
+      RCLCPP_FATAL(this->get_logger(), "Cannot connect to API. Exiting...");
+      rclcpp::shutdown();
+      return;
     }
 
     m_one_off_initialization_timer_callback_group =
         this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
     m_one_off_initialization_timer = this->create_wall_timer(std::chrono::nanoseconds(1),
-                                                            std::bind(&LoraWanBridge::initializationCallback, this),
-                                                            m_one_off_initialization_timer_callback_group);
+                                                             std::bind(&LoraWanBridge::initializationCallback, this),
+                                                             m_one_off_initialization_timer_callback_group);
   }
 
   LoraWanBridge::~LoraWanBridge() {
+    if (m_mqtt_client != nullptr && m_mqtt_client->is_connected()) {
+      m_mqtt_client->disconnect();
+    }
+    if (m_one_off_initialization_timer != nullptr) {
+      m_one_off_initialization_timer->cancel();
+    }
     RCLCPP_INFO(this->get_logger(), "LoraWanBridge shutdown.");
   }
 
   void LoraWanBridge::initializationCallback() {
     if (m_one_off_initialization_timer != nullptr) {
       m_one_off_initialization_timer->cancel();
-      m_one_off_initialization_timer_callback_group.reset();
     }
     auto devices_opt = initializeDevices();
     if (!devices_opt.has_value()) {
-      throw std::runtime_error("Cannot initialize devices. Exiting...");
+      RCLCPP_FATAL(this->get_logger(), "Cannot initialize devices. Exiting...");
+      rclcpp::shutdown();
+      return;
     }
     m_devices = std::move(devices_opt.value());
     RCLCPP_INFO(this->get_logger(), "LoraWanBridge started successfully");
@@ -99,7 +113,7 @@ namespace wisevision {
   }
 
   std::optional<std::unordered_map<std::string, Device::UniquePtr>> LoraWanBridge::initializeDevices() {
-    const auto devices_items_opt = getRegisteredDevicesItemsFromApi();
+    const auto devices_items_opt = getRegisteredDevicesItemsFromApi(m_devices_list_pagination);
     if (!devices_items_opt.has_value()) {
       RCLCPP_FATAL(this->get_logger(), "Cannot get devices items from the API.");
       return std::nullopt;
@@ -141,20 +155,20 @@ namespace wisevision {
     return devices;
   }
 
-  std::optional<std::vector<api::DeviceListItem>> LoraWanBridge::getRegisteredDevicesItemsFromApi() {
+  std::optional<std::vector<api::DeviceListItem>>
+  LoraWanBridge::getRegisteredDevicesItemsFromApi(const size_t devices_pagination) {
     if (m_device_client == nullptr) {
       RCLCPP_FATAL(this->get_logger(), "API client is not initialized. Cannot read devices configuration.");
       return std::nullopt;
     }
     std::vector<api::DeviceListItem> devices_items;
 
-    constexpr size_t devices_items_limit = 10;
     api::ListDevicesRequest list_devices_req;
-    list_devices_req.set_limit(devices_items_limit);
+    list_devices_req.set_limit(devices_pagination);
     list_devices_req.set_application_id(m_application_id);
     size_t number_of_reads = 0;
     while (true) {
-      list_devices_req.set_offset(number_of_reads * devices_items_limit);
+      list_devices_req.set_offset(number_of_reads * devices_pagination);
       api::ListDevicesResponse list_devices_res;
       grpc::ClientContext ctx;
       ctx.AddMetadata("authorization", "Bearer " + m_api_token);
@@ -206,14 +220,15 @@ namespace wisevision {
     return eventTypeFromString(tokens[5]);
   }
 
-  void LoraWanBridge::setupParameters() {
+  bool LoraWanBridge::setupParameters() {
     // Application ID
     rcl_interfaces::msg::ParameterDescriptor parameter_descriptor;
     parameter_descriptor.read_only = true;
     parameter_descriptor.type = rclcpp::ParameterType::PARAMETER_STRING;
     this->declare_parameter<std::string>("application_id", parameter_descriptor);
     if (!this->get_parameter<std::string>("application_id", m_application_id)) {
-      throw std::runtime_error("Set \"application_id\" node parameter.");
+      RCLCPP_FATAL(this->get_logger(), "Set \"application_id\" node parameter.");
+      return false;
     }
     RCLCPP_INFO(this->get_logger(), "Application ID: %s", m_application_id.c_str());
 
@@ -242,7 +257,6 @@ namespace wisevision {
     parameter_descriptor.read_only = true;
     parameter_descriptor.type = rclcpp::ParameterType::PARAMETER_BOOL;
     m_only_standard_parser = this->declare_parameter<bool>("use_only_standard", true, parameter_descriptor);
-    // this->get_parameter<bool>("use_only_standard", m_only_standard_parser);
     if (m_only_standard_parser) {
       RCLCPP_INFO(this->get_logger(), "Only standard parsers will be used.");
     } else {
@@ -252,7 +266,8 @@ namespace wisevision {
     // API token
     const auto token = std::getenv("CHIRPSTACK_API_KEY");
     if (token == nullptr) {
-      throw std::runtime_error("Provide API key as \"CHIRPSTACK_API_KEY\" environment variable.");
+      RCLCPP_FATAL(this->get_logger(), "Provide API key as \"CHIRPSTACK_API_KEY\" environment variable.");
+      return false;
     }
     m_api_token = token;
 
@@ -274,6 +289,19 @@ namespace wisevision {
                 "Chirpstack API parameters: (%s, %ld)",
                 m_api_parameters.host.c_str(),
                 m_api_parameters.port);
+
+    // Chirpstack API devices list pagination
+    parameter_descriptor = rcl_interfaces::msg::ParameterDescriptor {};
+    parameter_descriptor.read_only = true;
+    parameter_descriptor.type = rclcpp::ParameterType::PARAMETER_INTEGER;
+    const int devices_pagination = this->declare_parameter<int>("devices_pagination", 10, parameter_descriptor);
+    if (devices_pagination <= 0) {
+      RCLCPP_FATAL(this->get_logger(), "Device pagination (%d) must be positive value.", devices_pagination);
+      return false;
+    }
+    m_devices_list_pagination = devices_pagination;
+    RCLCPP_INFO(this->get_logger(), "Devices pagination for Chirpstack is %ld", m_devices_list_pagination);
+    return true;
   }
 
   EventType eventTypeFromString(const std::string& event_type) {
