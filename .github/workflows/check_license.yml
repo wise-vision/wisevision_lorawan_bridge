@@ -9,7 +9,7 @@ on:
 
 jobs:
   check-license:
-    runs-on: self-hosted
+    runs-on: wisevision-runner
     steps:
     - uses: actions/checkout@v4
     - name: LICENSE Existence Checker
