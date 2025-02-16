@@ -11,10 +11,9 @@ on:
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: wisevision-runner
 
     continue-on-error: true
-
 
     container:
       image: wisevision/ros_with_wisevision_msgs_wisevision_core_and_grpc:humble
