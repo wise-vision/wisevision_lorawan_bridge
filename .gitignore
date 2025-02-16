@@ -1,0 +1,7 @@
+.vscode/c_cpp_properties.json
+.vscode/settings.json
+*.proto
+**/wisevision_msgs/
+.cache/
+sx1302_hal/
+.env
