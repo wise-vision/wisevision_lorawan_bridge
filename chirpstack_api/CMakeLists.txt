@@ -13,7 +13,6 @@ set(generated_proto_source ${PROJECT_BINARY_DIR}/generated)
 
 execute_process(
   COMMAND bash -c "mkdir -p ${PROJECT_BINARY_DIR} &&
-                   cp -r ${CMAKE_CURRENT_SOURCE_DIR}/proto ${PROJECT_BINARY_DIR} &&
                    cp ${CMAKE_CURRENT_SOURCE_DIR}/setup_proto.sh ${PROJECT_BINARY_DIR} &&
                    cd ${PROJECT_BINARY_DIR} &&
                    bash ./setup_proto.sh"
