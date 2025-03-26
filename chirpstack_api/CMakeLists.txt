@@ -12,11 +12,12 @@ find_package(gRPC CONFIG REQUIRED)
 set(generated_proto_source ${PROJECT_BINARY_DIR}/generated)
 
 execute_process(
-  COMMAND bash -c "cd ${PROJECT_SOURCE_DIR} && ./setup_proto.sh"
+  COMMAND bash -c "mkdir -p ${PROJECT_BINARY_DIR} && cp -r ${CMAKE_CURRENT_SOURCE_DIR}/proto ${PROJECT_BINARY_DIR}"
+  COMMAND bash -c "cd ${PROJECT_BINARY_DIR} && ./setup_proto.sh"
 )
 
 execute_process(
-    COMMAND bash -c "mkdir -p ${generated_proto_source} && $ENV{GRPC_INSTALL_DIR}/bin/protoc -I=${PROJECT_SOURCE_DIR}/proto --cpp_out=${generated_proto_source} --grpc_out=${generated_proto_source} --plugin=protoc-gen-grpc=$ENV{GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin $(find ${PROJECT_SOURCE_DIR}/proto -iname *.proto)"
+    COMMAND bash -c "mkdir -p ${generated_proto_source} && $ENV{GRPC_INSTALL_DIR}/bin/protoc -I=${PROJECT_BINARY_DIR}/proto --cpp_out=${generated_proto_source} --grpc_out=${generated_proto_source} --plugin=protoc-gen-grpc=$ENV{GRPC_INSTALL_DIR}/bin/grpc_cpp_plugin $(find ${PROJECT_BINARY_DIR}/proto -iname *.proto)"
 )
 
 file(GLOB_RECURSE ALL_PROTO_SRCS "${generated_proto_source}/*.pb.cc")
