@@ -1,15 +1,43 @@
-version: "3.8"
+include:
+  - ./chirpstack_docker/docker-compose.yml
 services:
+  chirpstack-init:
+    build:
+      context: .
+      dockerfile: ./chirpstack_autogen_keys/Dockerfile
+      network: host
+    depends_on:
+      - chirpstack
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - .:/workspace
+    restart: "no"
   wisevision_lorawan_bridge:
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - .env
-    entrypoint: /bin/bash -c
-    command: >
-      "source /opt/ros/humble/setup.bash &&
-      source /root/wisevision_lorawan_bridge_ws/install/setup.bash &&
-      ros2 run wisevision_lorawan_bridge lorawan_bridge --ros-args --param application_id:=$APPLICATION_ID --param use_only_standard:=false"
+      network: host
+    depends_on:
+      chirpstack-init:
+        condition: service_completed_successfully
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        set -e
+        echo "Waiting for /workspace/.env.runtime..."
+        until [ -s /workspace/.env.runtime ]; do sleep 1; done
+        sed -i 's/\r$//' /workspace/.env.runtime
+        set -a; source /workspace/.env.runtime; set +a
+        env | grep -E '^CHIRPSTACK_' || true
+        echo "Env use CHIRPSTACK_APP_ID=$${CHIRPSTACK_APP_ID}"
+        source /opt/ros/humble/setup.bash
+        source /root/wisevision_lorawan_bridge_ws/install/setup.bash
+        exec ros2 run wisevision_lorawan_bridge lorawan_bridge \
+          --ros-args \
+          -p application_id:="$${CHIRPSTACK_APP_ID}" \
+          -p use_only_standard:=false
     tty: true
     network_mode: host
+    volumes:
+      - .:/workspace
