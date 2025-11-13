@@ -17,7 +17,7 @@ from typing import Dict
 from chirpstack_api.api import application_pb2, application_pb2_grpc, tenant_pb2, tenant_pb2_grpc
 
 # --- Configuration ---
-CHIRPSTACK_CONTAINER = "wisevision_lorawan_bridge-chirpstack-1"
+PATTERN = "chirpstack-init"
 CHIRPSTACK_SERVER = "chirpstack:8080"
 APP_NAME = "wise-os-app"
 APP_DESCRIPTION = "created automatically from docker"
@@ -82,7 +82,12 @@ def get_api_key_from_container() -> str:
     client = docker.from_env()
     print("Creating API key inside the ChirpStack container...")
     cmd = 'chirpstack --config /etc/chirpstack create-api-key --name "auto-key"'
-    exec_log = client.containers.get(CHIRPSTACK_CONTAINER).exec_run(cmd)
+    containers = [
+        c for c in client.containers.list(all=True)
+        if PATTERN in c.name
+    ]
+    for container in containers:
+        exec_log = client.containers.get(container).exec_run(cmd)
     output = exec_log.output.decode()
     print(output)
 
