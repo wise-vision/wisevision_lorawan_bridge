@@ -17,7 +17,7 @@ from typing import Dict
 from chirpstack_api.api import application_pb2, application_pb2_grpc, tenant_pb2, tenant_pb2_grpc
 
 # --- Configuration ---
-PATTERN = "chirpstack-init"
+CHIRPSTACK_IMAGE_PREFIX = "chirpstack/chirpstack:"
 CHIRPSTACK_SERVER = "chirpstack:8080"
 APP_NAME = "wise-os-app"
 APP_DESCRIPTION = "created automatically from docker"
@@ -35,6 +35,7 @@ def _normalize_newlines(path: Path) -> None:
     if new != raw:
         path.write_bytes(new)
 
+
 def load_env_file(path: Path) -> Dict[str, str]:
     data: Dict[str, str] = {}
     if not path.exists():
@@ -49,6 +50,7 @@ def load_env_file(path: Path) -> Dict[str, str]:
             data[k.strip()] = v.strip()
     return data
 
+
 def is_env_valid(env: Dict[str, str]) -> bool:
     for k in REQUIRED_KEYS:
         if k not in env:
@@ -57,6 +59,7 @@ def is_env_valid(env: Dict[str, str]) -> bool:
         if v is None or v.strip() == "":
             return False
     return True
+
 
 def write_env_atomic(path: Path, new_vars: Dict[str, str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -82,21 +85,47 @@ def get_api_key_from_container() -> str:
     client = docker.from_env()
     print("Creating API key inside the ChirpStack container...")
     cmd = 'chirpstack --config /etc/chirpstack create-api-key --name "auto-key"'
-    containers = [
-        c for c in client.containers.list(all=True)
-        if PATTERN in c.name
-    ]
-    for container in containers:
-        exec_log = container.exec_run(cmd)
-    output = exec_log.output.decode()
-    print(output)
 
-    match = re.search(r"token:\s*([A-Za-z0-9_\-\.]+)", output)
-    if not match:
-        raise RuntimeError("Failed to retrieve token from CLI output.")
-    token = match.group(1).strip()
-    print(f"API key retrieved:\n{token[:40]}... (truncated)")
-    return token
+    candidates = []
+    for c in client.containers.list(all=True):
+        tags = c.image.tags or []
+        if any(t.startswith(CHIRPSTACK_IMAGE_PREFIX) for t in tags):
+            candidates.append(c)
+
+    if not candidates:
+        raise RuntimeError(
+            f"Could not find ChirpStack container (image starting with {CHIRPSTACK_IMAGE_PREFIX})."
+        )
+
+    last_output = ""
+    for container in candidates:
+        print(f"Trying container: {container.name}")
+        exec_log = container.exec_run(cmd)
+        output = exec_log.output.decode(errors="ignore")
+        last_output = output
+        print(output)
+
+        if exec_log.exit_code != 0:
+            print(
+                f"Command failed in {container.name} "
+                f"with exit code {exec_log.exit_code}"
+            )
+            continue
+
+        match = re.search(r"token:\s*([A-Za-z0-9_\-\.]+)", output)
+        if match:
+            token = match.group(1).strip()
+            print(
+                f"API key retrieved from {container.name}:\n"
+                f"{token[:40]}... (truncated)"
+            )
+            return token
+
+    raise RuntimeError(
+        "Failed to retrieve token from CLI output.\n"
+        f"Last output was:\n{last_output}"
+    )
+
 
 def get_tenant_id(channel, metadata) -> str:
     tenants = tenant_pb2_grpc.TenantServiceStub(channel)
@@ -104,6 +133,7 @@ def get_tenant_id(channel, metadata) -> str:
     if not resp.result:
         raise RuntimeError("No tenants found — create a tenant first (TenantService.Create).")
     return resp.result[0].id
+
 
 def create_application(api_key: str):
     md = [('authorization', f'Bearer {api_key}')]
@@ -153,6 +183,7 @@ def main():
     if not is_env_valid(saved):
         raise RuntimeError(f"Saved {env_path} is invalid after write.")
     print("Validation OK – .env.runtime is present and complete.")
+
 
 if __name__ == "__main__":
     main()
