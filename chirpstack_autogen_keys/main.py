@@ -87,7 +87,7 @@ def get_api_key_from_container() -> str:
         if PATTERN in c.name
     ]
     for container in containers:
-        exec_log = client.containers.get(container).exec_run(cmd)
+        exec_log = container.exec_run(cmd)
     output = exec_log.output.decode()
     print(output)
 
