@@ -41,3 +41,4 @@ services:
     network_mode: host
     volumes:
       - .:/workspace
+    restart: unless-stopped
