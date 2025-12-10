@@ -41,6 +41,8 @@ services:
           -p use_only_standard:=false
     tty: true
     network_mode: host
+    environment:
+      - RMW_IMPLEMENTATION=rmw_zenoh_cpp
     volumes:
       - .:/workspace
     restart: unless-stopped
