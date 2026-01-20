@@ -1,7 +1,7 @@
 [project]
 name = "chirpstack-autogen-keys"
 version = "0.1.0"
-description = "Automitc chirpstac api key and app id generator"
+description = "Automatic ChirpStack api key and app id generator"
 authors = [{ name = "Cezary", email = "office@wisevision.tech" }]
 requires-python = ">=3.10"
 
@@ -9,7 +9,7 @@ dependencies = [
     "chirpstack-api",
     "grpcio",
     "protobuf",
-    "playwright",
+    "pyyaml",
     "docker"
 ]
 

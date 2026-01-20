@@ -12,6 +12,7 @@ RUN pip install --no-cache-dir \
     chirpstack-api \
     grpcio \
     protobuf \
+    pyyaml \
     docker
 
 COPY chirpstack_autogen_keys/main.py .

@@ -19,6 +19,7 @@ services:
       network: host
       args:
         ROS_DISTRO: jazzy
+        INSTALL_RMW_ZENOH: "1"
     depends_on:
       chirpstack-init:
         condition: service_completed_successfully
@@ -35,7 +36,12 @@ services:
         set -a; source /workspace/.env.runtime; set +a
         env | grep -E '^CHIRPSTACK_' || true
         echo "Env use CHIRPSTACK_APP_ID=$${CHIRPSTACK_APP_ID}"
-        source /opt/ros/humble/setup.bash
+        if [ ! -f "/opt/ros/$${ROS_DISTRO}/setup.bash" ]; then
+          echo "Missing ROS setup: /opt/ros/$${ROS_DISTRO}/setup.bash"
+          echo "Make sure ROS_DISTRO is set in the image (or set it in compose) and matches the installed ROS."
+          exit 1
+        fi
+        source /opt/ros/$${ROS_DISTRO}/setup.bash
         source /root/wisevision_lorawan_bridge_ws/install/setup.bash
         exec ros2 run wisevision_lorawan_bridge lorawan_bridge \
           --ros-args \

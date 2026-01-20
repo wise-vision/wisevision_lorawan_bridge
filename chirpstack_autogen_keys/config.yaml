@@ -1,0 +1,15 @@
+chirpstack:
+  image_prefix: "chirpstack/chirpstack:"
+  server: "chirpstack:8080"
+
+application:
+  name: "wise-os-app"
+  description: "created automatically from docker"
+  tenant_id: ""
+
+env:
+  file_path: "/workspace/.env.runtime"
+  required_keys:
+    - "CHIRPSTACK_API_KEY"
+    - "CHIRPSTACK_TENANT_ID"
+    - "CHIRPSTACK_APP_ID"

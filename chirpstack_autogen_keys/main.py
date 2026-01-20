@@ -12,18 +12,96 @@ import docker
 import grpc
 import re
 import os
+import contextlib
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict
+from typing import Any, Dict, Iterable, Tuple
 from chirpstack_api.api import application_pb2, application_pb2_grpc, tenant_pb2, tenant_pb2_grpc
 
-# --- Configuration ---
-CHIRPSTACK_IMAGE_PREFIX = "chirpstack/chirpstack:"
-CHIRPSTACK_SERVER = "chirpstack:8080"
-APP_NAME = "wise-os-app"
-APP_DESCRIPTION = "created automatically from docker"
-TENANT_ID = ""
-ENV_FILE_PATH = os.environ.get("CHIRPSTACK_ENV_FILE", "/workspace/.env.runtime")
-REQUIRED_KEYS = ("CHIRPSTACK_API_KEY", "CHIRPSTACK_TENANT_ID", "CHIRPSTACK_APP_ID")
+try:
+    import yaml
+except ModuleNotFoundError as e:
+    raise ModuleNotFoundError(
+        "Missing dependency: pyyaml. Install it (e.g. `pip install pyyaml`) to use this script."
+    ) from e
+
+
+@dataclass(frozen=True)
+class Config:
+    chirpstack_image_prefix: str = "chirpstack/chirpstack:"
+    chirpstack_server: str = "chirpstack:8080"
+    app_name: str = "wise-os-app"
+    app_description: str = "created automatically from docker"
+    tenant_id: str = ""
+    env_file_path: str = "/workspace/.env.runtime"
+    required_keys: Tuple[str, ...] = (
+        "CHIRPSTACK_API_KEY",
+        "CHIRPSTACK_TENANT_ID",
+        "CHIRPSTACK_APP_ID",
+    )
+
+
+def _get_nested(mapping: Dict[str, Any], path: Iterable[str], default: Any) -> Any:
+    cur: Any = mapping
+    for key in path:
+        if not isinstance(cur, dict) or key not in cur:
+            return default
+        cur = cur[key]
+    return cur
+
+
+def _get_str(mapping: Dict[str, Any], path: Iterable[str], default: str) -> str:
+    val = _get_nested(mapping, path, default)
+    if val is None:
+        return default
+    if not isinstance(val, str):
+        raise ValueError(f"Invalid value at {'.'.join(path)}: expected a string.")
+    return val
+
+
+def _resolve_config_path() -> Path | None:
+    env_path = os.environ.get("CHIRPSTACK_AUTOGEN_CONFIG_FILE")
+    if env_path:
+        return Path(env_path)
+
+    candidates = (
+        Path("/workspace/chirpstack_autogen_keys/config.yaml"),
+        Path(__file__).with_name("config.yaml"),
+        Path.cwd() / "chirpstack_autogen_keys" / "config.yaml",
+        Path.cwd() / "config.yaml",
+    )
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
+def load_config() -> Config:
+    path = _resolve_config_path()
+    if path is None:
+        return Config()
+
+    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict):
+        raise ValueError(f"Invalid YAML in {path}: expected a mapping at the root.")
+
+    required_keys = _get_nested(raw, ("env", "required_keys"), None)
+    if required_keys is None:
+        required_keys_tuple = Config.required_keys
+    else:
+        if not isinstance(required_keys, list) or not all(isinstance(k, str) for k in required_keys):
+            raise ValueError(f"Invalid env.required_keys in {path}: expected a list of strings.")
+        required_keys_tuple = tuple(required_keys)
+
+    return Config(
+        chirpstack_image_prefix=_get_str(raw, ("chirpstack", "image_prefix"), Config.chirpstack_image_prefix),
+        chirpstack_server=_get_str(raw, ("chirpstack", "server"), Config.chirpstack_server),
+        app_name=_get_str(raw, ("application", "name"), Config.app_name),
+        app_description=_get_str(raw, ("application", "description"), Config.app_description),
+        tenant_id=_get_str(raw, ("application", "tenant_id"), Config.tenant_id),
+        env_file_path=_get_str(raw, ("env", "file_path"), Config.env_file_path),
+        required_keys=required_keys_tuple,
+    )
 
 
 # --- Utils: .env parsing ---
@@ -51,8 +129,8 @@ def load_env_file(path: Path) -> Dict[str, str]:
     return data
 
 
-def is_env_valid(env: Dict[str, str]) -> bool:
-    for k in REQUIRED_KEYS:
+def is_env_valid(env: Dict[str, str], required_keys: Tuple[str, ...]) -> bool:
+    for k in required_keys:
         if k not in env:
             return False
         v = env[k]
@@ -61,7 +139,7 @@ def is_env_valid(env: Dict[str, str]) -> bool:
     return True
 
 
-def write_env_atomic(path: Path, new_vars: Dict[str, str]) -> None:
+def write_env_atomic(path: Path, new_vars: Dict[str, str], required_keys: Tuple[str, ...]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     existing = load_env_file(path)
     existing.update(new_vars)
@@ -74,14 +152,14 @@ def write_env_atomic(path: Path, new_vars: Dict[str, str]) -> None:
             f.write(f"{k}={v}\n")
     os.replace(tmp, path)  # atomic on POSIX
     print(f"Environment variables written to {path}")
-    for k in REQUIRED_KEYS:
+    for k in required_keys:
         val = existing.get(k, "")
         preview = (val[:40] + "...") if len(val) > 43 else val
         print(f"   {k}={preview}")
 
 
 # --- ChirpStack helpers ---
-def get_api_key_from_container() -> str:
+def get_api_key_from_container(config: Config) -> str:
     client = docker.from_env()
     print("Creating API key inside the ChirpStack container...")
     cmd = 'chirpstack --config /etc/chirpstack create-api-key --name "auto-key"'
@@ -89,12 +167,12 @@ def get_api_key_from_container() -> str:
     candidates = []
     for c in client.containers.list(all=True):
         tags = c.image.tags or []
-        if any(t.startswith(CHIRPSTACK_IMAGE_PREFIX) for t in tags):
+        if any(t.startswith(config.chirpstack_image_prefix) for t in tags):
             candidates.append(c)
 
     if not candidates:
         raise RuntimeError(
-            f"Could not find ChirpStack container (image starting with {CHIRPSTACK_IMAGE_PREFIX})."
+            f"Could not find ChirpStack container (image starting with {config.chirpstack_image_prefix})."
         )
 
     last_output = ""
@@ -135,52 +213,105 @@ def get_tenant_id(channel, metadata) -> str:
     return resp.result[0].id
 
 
-def create_application(api_key: str):
+def _iter_applications(apps, metadata, tenant_id: str, search: str) -> Iterable[Any]:
+    limit = 50
+    offset = 0
+    while True:
+        req = application_pb2.ListApplicationsRequest(
+            limit=limit,
+            offset=offset,
+            search=search,
+            tenant_id=tenant_id,
+        )
+        resp = apps.List(req, metadata=metadata)
+        result = getattr(resp, "result", None) or []
+        if not result:
+            return
+        for item in result:
+            yield item
+        offset += len(result)
+        if len(result) < limit:
+            return
+
+
+def _find_existing_application_id(apps, metadata, tenant_id: str, app_name: str) -> str | None:
+    for item in _iter_applications(apps, metadata, tenant_id=tenant_id, search=app_name):
+        existing_name = getattr(item, "name", None)
+        if existing_name != app_name:
+            continue
+        return (
+            getattr(item, "id", None)
+            or getattr(item, "application_id", None)
+            or getattr(item, "applicationId", None)
+        )
+    return None
+
+
+def create_application(config: Config, api_key: str):
     md = [('authorization', f'Bearer {api_key}')]
-    channel = grpc.insecure_channel(CHIRPSTACK_SERVER)
+    with contextlib.closing(grpc.insecure_channel(config.chirpstack_server)) as channel:
+        tenant_id = config.tenant_id or get_tenant_id(channel, md)
+        apps = application_pb2_grpc.ApplicationServiceStub(channel)
 
-    tenant_id = TENANT_ID or get_tenant_id(channel, md)
-    apps = application_pb2_grpc.ApplicationServiceStub(channel)
-    app = application_pb2.Application(
-        name=APP_NAME,
-        description=APP_DESCRIPTION,
-        tenant_id=tenant_id,
-    )
-    req = application_pb2.CreateApplicationRequest(application=app)
-    res = apps.Create(req, metadata=md)
+        existing_id = _find_existing_application_id(apps, md, tenant_id=tenant_id, app_name=config.app_name)
+        if existing_id:
+            print("Application already exists:")
+            print("   ID:", existing_id)
+            print("   Tenant:", tenant_id)
+            return existing_id, tenant_id
 
-    print("Application created:")
-    print("   ID:", res.id)
-    print("   Tenant:", tenant_id)
-    return res.id, tenant_id
+        app = application_pb2.Application(
+            name=config.app_name,
+            description=config.app_description,
+            tenant_id=tenant_id,
+        )
+        req = application_pb2.CreateApplicationRequest(application=app)
+        try:
+            res = apps.Create(req, metadata=md)
+        except grpc.RpcError as e:
+            code = e.code() if hasattr(e, "code") else None
+            details = e.details() if hasattr(e, "details") else str(e)
+            raise RuntimeError(
+                f"Failed to create application name={config.app_name!r} tenant_id={tenant_id!r}: {code} {details}"
+            ) from e
+
+        print("Application created:")
+        print("   ID:", res.id)
+        print("   Tenant:", tenant_id)
+        return res.id, tenant_id
 
 
 # --- Main flow ---
 def main():
-    env_path = Path(ENV_FILE_PATH)
+    config = load_config()
+    env_path = Path(os.environ.get("CHIRPSTACK_ENV_FILE", config.env_file_path))
     force_regen = os.environ.get("FORCE_REGEN", "").lower() in ("1", "true", "yes")
 
     current = load_env_file(env_path)
-    if is_env_valid(current) and not force_regen:
+    if is_env_valid(current, config.required_keys) and not force_regen:
         print(f"{env_path} already exists and is valid. Skipping regeneration.")
-        for k in REQUIRED_KEYS:
+        for k in config.required_keys:
             v = current.get(k, "")
             preview = (v[:40] + "...") if len(v) > 43 else v
             print(f"   {k}={preview}")
         return
 
     print("Generating / refreshing ChirpStack credentials...")
-    token = get_api_key_from_container()
-    app_id, tenant_id = create_application(token)
+    token = get_api_key_from_container(config)
+    app_id, tenant_id = create_application(config, token)
 
-    write_env_atomic(env_path, {
-        "CHIRPSTACK_API_KEY": token,
-        "CHIRPSTACK_TENANT_ID": tenant_id,
-        "CHIRPSTACK_APP_ID": app_id,
-    })
+    write_env_atomic(
+        env_path,
+        {
+            "CHIRPSTACK_API_KEY": token,
+            "CHIRPSTACK_TENANT_ID": tenant_id,
+            "CHIRPSTACK_APP_ID": app_id,
+        },
+        required_keys=config.required_keys,
+    )
 
     saved = load_env_file(env_path)
-    if not is_env_valid(saved):
+    if not is_env_valid(saved, config.required_keys):
         raise RuntimeError(f"Saved {env_path} is invalid after write.")
     print("Validation OK – .env.runtime is present and complete.")
 
