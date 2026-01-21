@@ -19,9 +19,12 @@ services:
       network: host
       args:
         ROS_DISTRO: jazzy
+        INSTALL_RMW_ZENOH: "1"
     depends_on:
       chirpstack-init:
         condition: service_completed_successfully
+      zenoh-rmw-router:
+        condition: service_started  
     entrypoint:
       - /bin/bash
       - -lc
@@ -46,6 +49,8 @@ services:
           -p use_only_standard:=false
     tty: true
     network_mode: host
+    environment:
+      - RMW_IMPLEMENTATION=rmw_zenoh_cpp
     volumes:
       - .:/workspace
     restart: unless-stopped

@@ -5,3 +5,4 @@
 .cache/
 sx1302_hal/
 .env
+.env.runtime
