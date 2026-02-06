@@ -2,6 +2,8 @@ ARG ROS_DISTRO=jazzy
 ARG INSTALL_RMW_ZENOH=0
 FROM wisevision/ros_with_wisevision_msgs_wisevision_core_and_grpc:${ROS_DISTRO}
 
+# Re-declare build args after FROM so they are in scope for subsequent ENV/RUN
+# (ARG scope is reset at each FROM; the earlier ARGs are only for the FROM line)
 ARG ROS_DISTRO
 ARG INSTALL_RMW_ZENOH
 ENV ROS_DISTRO=${ROS_DISTRO}
