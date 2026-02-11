@@ -12,7 +12,6 @@ import docker
 import grpc
 import re
 import os
-import contextlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, Tuple
@@ -194,8 +193,7 @@ def get_api_key_from_container(config: Config) -> str:
         if match:
             token = match.group(1).strip()
             print(
-                f"API key retrieved from {container.name}:\n"
-                f"{token[:40]}... (truncated)"
+                f"API key retrieved from {container.name}\n"
             )
             return token
 
@@ -208,9 +206,14 @@ def get_api_key_from_container(config: Config) -> str:
 def get_tenant_id(channel, metadata) -> str:
     tenants = tenant_pb2_grpc.TenantServiceStub(channel)
     resp = tenants.List(tenant_pb2.ListTenantsRequest(limit=1, offset=0), metadata=metadata)
-    if not resp.result:
+    result = getattr(resp, "result", None) or []
+    if not result:
         raise RuntimeError("No tenants found — create a tenant first (TenantService.Create).")
-    return resp.result[0].id
+    tenant = result[0]
+    tenant_id = getattr(tenant, "id", "")
+    if not tenant_id:
+        raise RuntimeError("TenantService.List returned a tenant without required 'id'.")
+    return tenant_id
 
 
 def _iter_applications(apps, metadata, tenant_id: str, search: str) -> Iterable[Any]:
@@ -249,7 +252,7 @@ def _find_existing_application_id(apps, metadata, tenant_id: str, app_name: str)
 
 def create_application(config: Config, api_key: str):
     md = [('authorization', f'Bearer {api_key}')]
-    with contextlib.closing(grpc.insecure_channel(config.chirpstack_server)) as channel:
+    with grpc.insecure_channel(config.chirpstack_server) as channel:
         tenant_id = config.tenant_id or get_tenant_id(channel, md)
         apps = application_pb2_grpc.ApplicationServiceStub(channel)
 
