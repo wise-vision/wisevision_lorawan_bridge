@@ -13,6 +13,7 @@
 #include <mqtt/async_client.h>
 #include <mqtt/delivery_token.h>
 #include <rclcpp/rclcpp.hpp>
+#include <optional>
 #include <unordered_map>
 #include <wisevision_parser/parser.hpp>
 
@@ -37,6 +38,11 @@ namespace wisevision {
     size_t port; // cppcheck-suppress unusedStructMember
   };
 
+  struct ParsedTopic {
+    std::string device_eui;
+    EventType event_type;
+  };
+
   EventType eventTypeFromString(const std::string& event_type);
 
   class LoraWanBridge : public rclcpp::Node, public virtual mqtt::callback {
@@ -58,8 +64,7 @@ namespace wisevision {
     size_t m_devices_list_pagination;
 
     bool setupParameters();
-    std::string getDeviceEuiFromTopic(const std::string& topic);
-    EventType getEventTypeFromTopic(const std::string& topic);
+    std::optional<ParsedTopic> parseTopic(const std::string& topic) const;
     void publishToMqtt(const std::string& device_eui, const std::vector<uint8_t>& payload);
     bool connectToApi(const ClientConfiguration& configuration);
     std::optional<std::unordered_map<std::string, Device::UniquePtr>> initializeDevices();
