@@ -10,6 +10,7 @@
 
 #include "wisevision_lorawan_bridge/lorawan_bridge.hpp"
 
+#include <chrono>
 #include <grpcpp/create_channel.h>
 
 #include "chirpstack_api/integration/integration.pb.h"
@@ -28,7 +29,13 @@ namespace wisevision {
                                                              std::to_string(m_mqtt_broker_parameters.port),
                                                          "lorawan_bridge");
     m_mqtt_client->set_callback(*this);
-    m_mqtt_client->connect();
+    try {
+      m_mqtt_client->connect()->wait();
+    } catch (const mqtt::exception& ex) {
+      RCLCPP_FATAL(this->get_logger(), "Cannot connect to MQTT broker: %s", ex.what());
+      rclcpp::shutdown();
+      return;
+    }
 
     if (!connectToApi(m_api_parameters)) {
       RCLCPP_FATAL(this->get_logger(), "Cannot connect to API. Exiting...");
@@ -75,7 +82,14 @@ namespace wisevision {
   void LoraWanBridge::message_arrived(mqtt::const_message_ptr msg) {
     RCLCPP_DEBUG(this->get_logger(), "Received MQTT message from topic: %s", msg->get_topic().c_str());
     const auto topic = msg->get_topic();
-    const auto device_eui = getDeviceEuiFromTopic(topic);
+    const auto parsed_topic_opt = parseTopic(topic);
+    if (!parsed_topic_opt.has_value()) {
+      RCLCPP_WARN(this->get_logger(), "Skipping MQTT message with unexpected topic format: %s", topic.c_str());
+      return;
+    }
+
+    const auto& parsed_topic = parsed_topic_opt.value();
+    const auto& device_eui = parsed_topic.device_eui;
     if (m_devices.find(device_eui) == m_devices.end()) {
       RCLCPP_WARN(this->get_logger(),
                   "There is no device defined with EUI \"%s\" from topic \"%s\"",
@@ -84,8 +98,7 @@ namespace wisevision {
       return;
     }
 
-    const auto event_type = getEventTypeFromTopic(topic);
-    switch (event_type) {
+    switch (parsed_topic.event_type) {
     case EventType::Up: {
       const auto raw_payload = msg->get_payload();
       integration::UplinkEvent uplink;
@@ -107,9 +120,15 @@ namespace wisevision {
   bool LoraWanBridge::connectToApi(const ClientConfiguration& configuration) {
     const auto channel = grpc::CreateChannel(configuration.host + ":" + std::to_string(configuration.port),
                                              grpc::InsecureChannelCredentials());
+    if (!channel->WaitForConnected(std::chrono::system_clock::now() + std::chrono::seconds(5))) {
+      RCLCPP_ERROR(this->get_logger(),
+                   "Cannot establish gRPC channel to ChirpStack API at %s:%ld",
+                   configuration.host.c_str(),
+                   configuration.port);
+      return false;
+    }
     m_device_client = api::DeviceService::NewStub(channel);
-    // TODO(styczen): Check if it is possible to do health check the server.
-    return true;
+    return m_device_client != nullptr;
   }
 
   std::optional<std::unordered_map<std::string, Device::UniquePtr>> LoraWanBridge::initializeDevices() {
@@ -210,14 +229,14 @@ namespace wisevision {
                            serialized_downlink);
   }
 
-  std::string LoraWanBridge::getDeviceEuiFromTopic(const std::string& topic) {
-    auto tokens = utils::splitStringByDelimiter(topic, "/");
-    return tokens[3];
-  }
+  std::optional<ParsedTopic> LoraWanBridge::parseTopic(const std::string& topic) const {
+    const auto tokens = utils::splitStringByDelimiter(topic, "/");
+    if (tokens.size() != 6 || tokens[0] != "application" || tokens[1] != m_application_id || tokens[2] != "device" ||
+        tokens[4] != "event" || tokens[3].empty() || tokens[5].empty()) {
+      return std::nullopt;
+    }
 
-  EventType LoraWanBridge::getEventTypeFromTopic(const std::string& topic) {
-    auto tokens = utils::splitStringByDelimiter(topic, "/");
-    return eventTypeFromString(tokens[5]);
+    return ParsedTopic {tokens[3], eventTypeFromString(tokens[5])};
   }
 
   bool LoraWanBridge::setupParameters() {
