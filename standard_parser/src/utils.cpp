@@ -10,7 +10,8 @@
 
 #include "standard_parser/utils.hpp"
 
-#include <cassert>
+#include <algorithm>
+#include <cctype>
 #include <iomanip>
 #include <sstream>
 #include <string>
@@ -25,11 +26,17 @@ namespace wisevision::utils {
     return hex_stream.str();
   }
 
-  std::vector<uint8_t> convertHexStringToBinary(const std::string& str) {
-    assert(str.size() % 2 == 0);
+  std::optional<std::vector<uint8_t>> convertHexStringToBinary(const std::string& str) {
+    if (str.size() % 2 != 0) {
+      return std::nullopt;
+    }
+    if (!std::all_of(str.begin(), str.end(), [](const unsigned char c) { return std::isxdigit(c) != 0; })) {
+      return std::nullopt;
+    }
+
     std::vector<uint8_t> binary(str.size() / 2);
-    for (size_t i = 0; i < str.size() - 1; i += 2) {
-      binary[i / 2] = std::stoi(str.substr(i, 2), nullptr, 16);
+    for (size_t i = 0; i < str.size(); i += 2) {
+      binary[i / 2] = static_cast<uint8_t>(std::stoi(str.substr(i, 2), nullptr, 16));
     }
     return binary;
   }

@@ -16,8 +16,11 @@ namespace wisevision {
     std_msgs::msg::String ros_message;
     m_serde.deserialize_message(&message, &ros_message);
     const auto& hex_encoded_downlink = ros_message.data;
-    const auto binary = utils::convertHexStringToBinary(hex_encoded_downlink);
-    return binary;
+    const auto binary_opt = utils::convertHexStringToBinary(hex_encoded_downlink);
+    if (!binary_opt.has_value()) {
+      return std::nullopt;
+    }
+    return binary_opt.value();
   };
 
   std::optional<rclcpp::SerializedMessage> StandardParser::bytesToRosMessage(const std::vector<uint8_t>& bytes) {
